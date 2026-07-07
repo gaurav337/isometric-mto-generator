@@ -419,31 +419,31 @@ The repository contains two sets of drawing assets used for manual testing, visu
 
 ### 📂 Backend Sample Drawings (`backend/sample_drawings/`)
 These drawings are used to test the end-to-end web application by uploading blueprints directly via the browser upload zone:
-* [sample_iso.png](file:///home/msi/Documents/project/backend/sample_drawings/sample_iso.png): A standard 6" carbon steel process line isometric drawing containing common piping items.
-* [3. Marked isometric (1).pdf](file:///home/msi/Documents/project/backend/sample_drawings/3.%20Marked%20isometric%20(1).pdf): An annotated, multi-component isometric PDF file with multiple piping runs and callouts.
+* [sample_iso.png](backend/sample_drawings/sample_iso.png): A standard 6" carbon steel process line isometric drawing containing common piping items.
+* [3. Marked isometric (1).pdf](backend/sample_drawings/3.%20Marked%20isometric%20(1).pdf): An annotated, multi-component isometric PDF file with multiple piping runs and callouts.
 
 ### 🧪 Regression & Visual Test Assets (`assets/tests/`)
 These dedicated testing assets are used as benchmark cases to validate both the backend extraction accuracy and the frontend dashboard visual representation.
 
 #### 1. Test Case 1: Standard Piping Spool
-* **Question (Input blueprint):** [test1.png](file:///home/msi/Documents/project/assets/tests/test1.png)
+* **Question (Input blueprint):** [test1.png](assets/tests/test1.png)
   * *Description:* A standard isometric drawing containing carbon steel piping, multiple $90^\circ$ elbows, reducing tees, support shoes, and inline valve symbols.
   * *Key Characteristics:*
     * Line Number: `USERDEFINEDLINE-3-100-CS300` (8" Nominal Size, class CS300).
     * High-density annotations for supports (labeled `[1]` to `[8]`).
     * Clear weld dots marking shop/field connections.
-* **Result (Expected visual dashboard):** [test1_result.jpeg](file:///home/msi/Documents/project/assets/tests/test1_result.jpeg)
+* **Result (Expected visual dashboard):** [test1_result.jpeg](assets/tests/test1_result.jpeg)
   * *Description:* A screenshot of the frontend results workspace showing how `test1.png` should be parsed and rendered.
   * *UI & Data Features Shown:*
-    * **Side-by-Side Panel:** The left panel renders the uploaded drawing [test1.png](file:///home/msi/Documents/project/assets/tests/test1.png), while the right panel renders the interactive parsed MTO table.
+    * **Side-by-Side Panel:** The left panel renders the uploaded drawing [test1.png](assets/tests/test1.png), while the right panel renders the interactive parsed MTO table.
     * **MTO Item Breakdown:** Correctly displays the main 8" piping run and 4" branch runs, standard fittings (e.g. 90 Deg LR Elbows, Reducing Tees), valves (Gate Valve), and supports.
     * **Programmatic Derivation:** Shows that joints consumable items (Gaskets and Stud Bolts) are derived automatically based on flanged connections and ratings.
     * **Summary Chips:** Total pipe length, fittings, flanges, and valves count cards populated at the top of the workspace.
 
 #### 2. Test Case 2: Complex Geometry & Distinct Title Block
-* **Question (Input blueprint):** [test2.png](file:///home/msi/Documents/project/assets/tests/test2.png)
+* **Question (Input blueprint):** [test2.png](assets/tests/test2.png)
   * *Description:* A second, distinct isometric blueprint sheet with different text orientations, varying label placements, and a custom title block structure. It provides a more challenging geometry for the Vision AI model.
-* **Result (Expected visual dashboard):** [test2_result.jpeg](file:///home/msi/Documents/project/assets/tests/test2_result.jpeg)
+* **Result (Expected visual dashboard):** [test2_result.jpeg](assets/tests/test2_result.jpeg)
   * *Description:* The corresponding frontend dashboard screenshot demonstrating successful extraction. It validates that the UI remains visually consistent, components align correctly under standard color schemes, and the table dynamically displays metadata.
 
 ---
@@ -457,7 +457,7 @@ source .venv/bin/activate
 python test_images.py
 ```
 
-This runs the active extractor (e.g., Llama NIM or Google Gemini API) directly against [test1.png](file:///home/msi/Documents/project/assets/tests/test1.png) and [test2.png](file:///home/msi/Documents/project/assets/tests/test2.png). Below is an example of successful console output when using the `gemini` extractor:
+This runs the active extractor (e.g., Llama NIM or Google Gemini API) directly against [test1.png](assets/tests/test1.png) and [test2.png](assets/tests/test2.png). Below is an example of successful console output when using the `gemini` extractor:
 
 ```text
 2026-07-07 18:17:13,533 [INFO] app.services.gemini_extractor: GeminiExtractor initialized with model: gemini-2.5-flash
@@ -489,7 +489,7 @@ Summary: total_pipe_length_m=108.32 fittings=7 flanges=0 valves=1 gaskets=0 bolt
 ```
 
 ### 👁️ Frontend & Visual Regression Testing
-Developers can use [test1_result.jpeg](file:///home/msi/Documents/project/assets/tests/test1_result.jpeg) and [test2_result.jpeg](file:///home/msi/Documents/project/assets/tests/test2_result.jpeg) to verify:
+Developers can use [test1_result.jpeg](assets/tests/test1_result.jpeg) and [test2_result.jpeg](assets/tests/test2_result.jpeg) to verify:
 1. **Responsive Layouts:** Ensure that the side-by-side splits and tables behave correctly on different viewport widths.
 2. **Typography & Styling:** Confirm custom component fonts, spacing, shadows, and glassmorphism elements match the design system.
 3. **Data Integrity:** Check that MTO tables align correctly, headers are properly capitalized, and units (M, EA, SET) are rendered properly in the UI.
