@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 import httpx
 from typing import Any
 from app.config import Settings
@@ -98,12 +99,12 @@ class NvidiaExtractor(VisionExtractor):
             "response_format": {"type": "json_object"}
         }
 
-        # Attempt extraction with one retry
-        attempts = 2
+        # Attempt extraction with retries and exponential backoff
+        attempts = 3
         for attempt in range(attempts):
             try:
                 logger.info(f"NVIDIA API request attempt {attempt + 1}/{attempts}")
-                with httpx.Client(timeout=90.0) as client:
+                with httpx.Client(timeout=30.0) as client:
                     response = client.post(self.invoke_url, headers=headers, json=payload)
                 
                 if response.status_code != 200:
@@ -123,9 +124,15 @@ class NvidiaExtractor(VisionExtractor):
                 
                 return parsed_data
                 
-            except (httpx.RequestError, json.JSONDecodeError, KeyError, ValueError) as e:
+            except ExtractionError:
+                # Already a terminal failure — don't retry
+                raise
+            except Exception as e:
                 logger.warning(f"Attempt {attempt + 1} failed: {str(e)}")
-                if attempt == attempts - 1:
-                    raise ExtractionError(f"NVIDIA Build extraction failed after {attempts} attempts: {str(e)}")
-        
-        raise ExtractionError("NVIDIA Build extraction failed: unknown error.")
+                if attempt < attempts - 1:
+                    sleep_time = 2 ** attempt
+                    logger.info(f"Retrying NVIDIA in {sleep_time} seconds...")
+                    time.sleep(sleep_time)
+                else:
+                    logger.error(f"NVIDIA Build extraction failed after {attempts} attempts: {str(e)}")
+                    raise ExtractionError(f"NVIDIA Build extraction failed after {attempts} attempts: {str(e)}") from e

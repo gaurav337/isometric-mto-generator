@@ -140,6 +140,8 @@ def validate_and_derive(raw_data: dict[str, Any], job_id: str) -> MTOResponse:
             
             # Normalize NPS size
             size_nps = str(raw_item.get("size_nps") or "").strip()
+            # Standardize X/x to lowercase x
+            size_nps = size_nps.replace("X", "x")
             # If no double quote, append it
             if size_nps and '"' not in size_nps:
                 # E.g., if "6" or "6x4", convert to "6\"" or "6\"x4\""

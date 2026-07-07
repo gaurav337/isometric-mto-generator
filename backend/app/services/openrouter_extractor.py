@@ -1,4 +1,5 @@
 import json
+import re
 import logging
 import httpx
 import time
@@ -116,13 +117,11 @@ class OpenRouterExtractor(VisionExtractor):
                 
                 # Try to parse the JSON string from the response
                 try:
-                    content = content.strip()
-                    if content.startswith("```json"):
-                        content = content[7:-3]
-                    elif content.startswith("```"):
-                        content = content[3:-3]
-                        
-                    parsed_data = json.loads(content)
+                    content_str = content.strip()
+                    match = re.search(r'```(?:json)?\s*(.*?)\s*```', content_str, re.DOTALL | re.IGNORECASE)
+                    if match:
+                        content_str = match.group(1).strip()
+                    parsed_data = json.loads(content_str)
                 except json.JSONDecodeError as e:
                     raise ExtractionError(f"Failed to parse OpenRouter response as JSON: {str(e)}")
                 

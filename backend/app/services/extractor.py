@@ -44,7 +44,7 @@ class ChainExtractor(VisionExtractor):
                 result = extractor.extract(image_b64)
                 self._active_extractor = extractor
                 return result
-            except ExtractionError as e:
+            except Exception as e:
                 logger.warning(f"Provider {extractor.source} failed: {e}")
                 last_error = e
         

@@ -21,7 +21,9 @@ export default function ResultsPage({ params }: { params: Promise<{ jobId: strin
 
     const fetchData = async () => {
       try {
+        console.log(`[Frontend Debug] Fetching MTO result for jobId: ${jobId}`);
         const result = await getMTOResult(jobId);
+        console.log(`[Frontend Debug] Received response for jobId: ${jobId}. Status: ${result.status}, Source: ${result.source}`, result);
         if (mounted) {
           setData(result);
           if (result.status === JobStatus.PENDING || result.status === JobStatus.RUNNING) {
@@ -32,6 +34,7 @@ export default function ResultsPage({ params }: { params: Promise<{ jobId: strin
           }
         }
       } catch (err: unknown) {
+        console.error(`[Frontend Debug] Error fetching MTO result for jobId: ${jobId}:`, err);
         if (mounted) {
           setError(err instanceof Error ? err.message : 'An error occurred while fetching results.');
           setLoading(false);
@@ -51,7 +54,12 @@ export default function ResultsPage({ params }: { params: Promise<{ jobId: strin
   const zoomOut = () => setZoom(prev => Math.max(prev - 0.2, 0.5));
   const resetZoom = () => setZoom(1);
 
-  if (loading && !data) {
+  const isStillProcessing = loading || (data && (data.status === JobStatus.PENDING || data.status === JobStatus.RUNNING));
+
+  if (isStillProcessing) {
+    const isPending = data?.status === JobStatus.PENDING;
+    const isRunning = data?.status === JobStatus.RUNNING || !data;
+
     return (
       <div className={styles.loadingContainer} role="status">
         <div className={styles.spinner}></div>
@@ -64,13 +72,23 @@ export default function ResultsPage({ params }: { params: Promise<{ jobId: strin
             <span className={styles.statusIndicator}>✔ File received & uploaded</span>
             <span>OK</span>
           </div>
-          <div className={`${styles.progressItem} ${styles.progressItemActive}`}>
+          
+          <div className={`${styles.progressItem} ${isRunning ? styles.progressItemActive : isPending ? styles.progressItemPending : styles.progressItemDone}`}>
             <span className={styles.statusIndicator}>
-              <span style={{ width: '8px', height: '8px', backgroundColor: 'var(--color-primary-500)', borderRadius: '50%', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
-              Running Vision LLM extraction...
+              {isRunning ? (
+                <>
+                  <span style={{ width: '8px', height: '8px', backgroundColor: 'var(--color-primary-500)', borderRadius: '50%', display: 'inline-block', animation: 'pulse 1.5s infinite', marginRight: '6px' }} />
+                  Running Vision LLM extraction...
+                </>
+              ) : isPending ? (
+                "⏳ Queueing Vision LLM extraction..."
+              ) : (
+                "✔ Vision LLM extraction complete"
+              )}
             </span>
-            <span>Running</span>
+            <span>{isRunning ? "Running" : isPending ? "Queueing" : "OK"}</span>
           </div>
+
           <div className={`${styles.progressItem} ${styles.progressItemPending}`}>
             <span>⏳ ASME validation check</span>
             <span>Pending</span>
@@ -117,7 +135,7 @@ export default function ResultsPage({ params }: { params: Promise<{ jobId: strin
               <span style={{ width: '6px', height: '6px', backgroundColor: '#10b981', borderRadius: '50%', display: 'inline-block' }} />
               Extracted
             </span>
-            <span className={styles.sourceBadge}>Pipeline: {data?.source === 'nvidia' ? 'NVIDIA Llama' : data?.source === 'gemini' ? 'Google Gemini' : 'Mock Fallback'}</span>
+            <span className={styles.sourceBadge}>Pipeline: {data?.source === 'nvidia' ? 'NVIDIA Llama' : data?.source === 'gemini' ? 'Google Gemini' : data?.source === 'openrouter' ? 'OpenRouter' : 'Mock Fallback'}</span>
           </div>
         </div>
         <div className={styles.actions}>

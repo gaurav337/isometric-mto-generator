@@ -155,7 +155,7 @@ export default function MtoTable({ items }: MtoTableProps) {
                     <td style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-secondary-500)' }}>
                       {item.end_type || '-'}
                     </td>
-                    <td className={styles.number} style={{ color: '#ffffff' }}>
+                    <td className={styles.number}>
                       {item.quantity}
                     </td>
                     <td>{item.unit}</td>

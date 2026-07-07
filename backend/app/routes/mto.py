@@ -32,6 +32,7 @@ import asyncio
 import csv
 import io
 import logging
+import time
 import uuid
 from datetime import datetime, timezone
 
@@ -96,23 +97,33 @@ async def _run_extraction(
         log.info(f"Extraction started (provider={extractor.source})")
 
         # --- CPU-bound: PDF render / PIL resize — thread pool ---
+        t0 = time.time()
         try:
             image_b64: str = await asyncio.to_thread(
                 preprocess_to_base64, content, filename
             )
+            log.info(f"Preprocessing completed in {time.time() - t0:.2f} seconds")
         except PreprocessingError as e:
             raise ExtractionError(f"Preprocessing failed: {e}") from e
 
         # --- IO-bound: LLM API call — thread pool ---
+        t1 = time.time()
         try:
-            raw_payload = await asyncio.to_thread(extractor.extract, image_b64)
-        except ExtractionError:
+            # 60-second hard ceiling for primary LLM extraction call
+            raw_payload = await asyncio.wait_for(
+                asyncio.to_thread(extractor.extract, image_b64),
+                timeout=60.0,
+            )
+            log.info(f"Primary extractor ({extractor.source}) completed in {time.time() - t1:.2f} seconds")
+        except (asyncio.TimeoutError, ExtractionError, Exception) as e:
             log.warning(
-                f"Primary extractor ({extractor.source}) failed — falling back to mock"
+                f"Primary extractor ({extractor.source}) failed or timed out (falling back to mock) after {time.time() - t1:.2f} seconds: {e}"
             )
             from app.services.mock_extractor import MockExtractor
             extractor = MockExtractor()
+            t2 = time.time()
             raw_payload = await asyncio.to_thread(extractor.extract, image_b64)
+            log.info(f"Fallback mock extractor completed in {time.time() - t2:.2f} seconds")
 
         # --- Validate + derive ---
         mto_response = validate_and_derive(raw_payload, job_id)
@@ -122,10 +133,10 @@ async def _run_extraction(
         mto_response.completed_at = _utcnow()
 
         await store.update_job(job_id, mto_response)
-        log.info("Extraction completed successfully")
+        log.info(f"Extraction and validation completed successfully in {time.time() - t0:.2f} seconds")
 
     except Exception as exc:
-        log.error(f"Extraction failed: {exc}")
+        log.error(f"Extraction failed: {exc}", exc_info=True)
         failed = _failed_response(job_id, getattr(extractor, "source", "mock"), str(exc))
         await store.update_job(job_id, failed)
 

@@ -1,0 +1,11 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+jobs.db
+jobs.db-shm
+jobs.db-wal
+.env
+*.log
+test_nv_api.py

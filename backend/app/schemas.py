@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import re
 from typing import Literal
@@ -53,19 +53,14 @@ class MTOItem(BaseModel):
     @classmethod
     def validate_size_nps(cls, v: str) -> str:
         # Normalize: strip whitespace and check format: e.g., 6", 6"x4", 1/2", 1.5", 1-1/2", etc.
-        # Regex explanation: digits (optional fraction or dash fraction), then inch symbol ("), optional 'x' followed by another size.
-        cleaned = v.strip()
-        # Accept digits, slashes, dashes, decimals, quotes, and 'x'
+        # Standardize X/x to lowercase x
+        cleaned = v.strip().replace("X", "x")
         pattern = r'^(\d+(?:[./-]\d+)?)"(?:x(\d+(?:[./-]\d+)?)"|x(\d+))?$'
         if not re.match(pattern, cleaned):
-            # We don't fail immediately, but let's try to normalize simple strings or allow it.
-            # However, per the plan, a regex check is good. Let's make the regex flexible but correct:
-            # Let's check for standard patterns. If it doesn't match, we still allow it but raise warning or fail
-            # depending on standard practices. Let's write a flexible regex:
             flexible_pattern = r'^\d+(\.\d+)?/?\d*"(x\d+(\.\d+)?/?\d*")?$'
-            # Let's make sure it contains a double quote or is reasonably like a size:
-            if '"' not in cleaned:
-                raise ValueError("NPS size must contain double quotes (\") to denote inches")
+            if not re.match(flexible_pattern, cleaned):
+                if '"' not in cleaned:
+                    raise ValueError("NPS size must contain double quotes (\") to denote inches")
         return cleaned
 
     @model_validator(mode="after")
@@ -106,7 +101,7 @@ class MTOResponse(BaseModel):
     items: list[MTOItem] = []
     summary: MTOSummary | None = None
     error_message: str | None = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: datetime | None = None
 
 class UploadResponse(BaseModel):

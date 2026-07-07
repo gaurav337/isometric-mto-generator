@@ -2,17 +2,20 @@ import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 
-client = TestClient(app)
+@pytest.fixture
+def client():
+    with TestClient(app) as c:
+        yield c
 
 from app.config import get_settings, Settings
 
-def test_health_check():
+def test_health_check(client):
     response = client.get("/api/health")
     assert response.status_code == 200
     assert "status" in response.json()
     assert "provider" in response.json()
 
-def test_health_check_providers():
+def test_health_check_providers(client):
     # 1. Test Mock when no keys are set
     def override_settings_mock():
         return Settings(nvidia_api_key=None, gemini_api_key=None, openrouter_api_key=None)
@@ -48,11 +51,11 @@ def test_health_check_providers():
     # Clear overrides
     app.dependency_overrides.clear()
 
-def test_upload_missing_file():
+def test_upload_missing_file(client):
     response = client.post("/api/upload")
     assert response.status_code == 422
 
-def test_upload_invalid_file_type():
+def test_upload_invalid_file_type(client):
     # Attempt to upload a text file — route returns 415 Unsupported Media Type
     response = client.post(
         "/api/upload",
@@ -61,19 +64,19 @@ def test_upload_invalid_file_type():
     assert response.status_code == 415
     assert "Unsupported file type" in response.json()["detail"]
 
-def test_get_mto_not_found():
+def test_get_mto_not_found(client):
     response = client.get("/api/mto/invalid-job-id")
     assert response.status_code == 404
     assert "not found" in response.json()["detail"]
 
-def test_get_mto_csv_not_found():
+def test_get_mto_csv_not_found(client):
     response = client.get("/api/mto/invalid-job-id/csv")
     assert response.status_code == 404
 
 from unittest.mock import MagicMock, patch
 from app.services.extractor import ExtractionError
 
-def test_upload_fallback_to_mock():
+def test_upload_fallback_to_mock(client):
     # Mock get_extractor to return a mock extractor that raises ExtractionError
     mock_extractor = MagicMock()
     mock_extractor.extract.side_effect = ExtractionError("API failure")

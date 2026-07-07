@@ -62,7 +62,7 @@ export interface MTOSummary {
 export interface MTOResponse {
   job_id: string;
   status: JobStatus;
-  source: "nvidia" | "gemini" | "mock";
+  source: "nvidia" | "gemini" | "openrouter" | "mock";
   image_b64?: string | null;
   drawing_meta?: DrawingMetadata | null;
   items: MTOItem[];

@@ -38,9 +38,10 @@ export default function UploadZone() {
     setIsUploading(true);
     try {
       const result = await uploadDrawing(file);
-      router.push(`/results/${result.job_id}`);
+      await router.push(`/results/${result.job_id}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to upload and process the drawing. Please verify connection and try again.");
+    } finally {
       setIsUploading(false);
     }
   };
