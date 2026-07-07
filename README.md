@@ -85,7 +85,32 @@ This application automates the tedious, error-prone manual process of compiling 
 
 ---
 
-## 2. Project Structure
+## 2. Screenshots
+
+A visual walkthrough of the three core screens in the application:
+
+### 🏠 Landing — Upload Isometric Drawing
+> Drag & drop or browse for a PNG, JPG, or PDF blueprint sheet (up to 20 MB). Key feature cards are shown below the upload zone.
+
+![Landing page showing the drag-and-drop upload interface](assets/screenshots/landing.jpeg)
+
+---
+
+### ⚙️ Processing — Vision AI Pipeline in Progress
+> Once a file is submitted, the app shows a real-time status tracker as it runs through Vision LLM extraction, ASME validation, and joint consumables calculation.
+
+![Processing screen with live pipeline status indicators](assets/screenshots/processing.jpeg)
+
+---
+
+### 📊 Results — Workspace Dashboard & MTO Table
+> After extraction completes, the full Material Take-Off is displayed — drawing title block metadata, summary cards (pipe length, fittings, flanges, valves, gaskets, bolt sets), and a searchable, filterable MTO table with CSV export.
+
+![Results dashboard with drawing metadata and full MTO table](assets/screenshots/result.jpeg)
+
+---
+
+## 3. Project Structure
 
 ```
 project/
@@ -123,7 +148,7 @@ project/
 
 ---
 
-## 3. Setup & Running Locally
+## 4. Setup & Running Locally
 
 ### Version Requirements
 
@@ -200,7 +225,7 @@ Frontend: [http://localhost:3000](http://localhost:3000) · Backend: [http://loc
 
 ---
 
-## 4. Environment Variables
+## 5. Environment Variables
 
 All variables live in `backend/.env` (copy from `.env.example`, never commit the real file).
 
@@ -222,7 +247,7 @@ All variables live in `backend/.env` (copy from `.env.example`, never commit the
 
 ---
 
-## 5. How the AI Pipeline Works
+## 6. How the AI Pipeline Works
 
 ### Step 1 — Preprocessing (`app/services/preprocessor.py`)
 
@@ -296,7 +321,7 @@ The DB file (`backend/jobs.db`) is created automatically on first startup via th
 
 ---
 
-## 6. API Reference
+## 7. API Reference
 
 ### Request / Response Flow
 
@@ -336,7 +361,7 @@ GET /api/mto/{job_id}/csv         ← only available when COMPLETED
 
 ---
 
-## 7. Rate Limiting
+## 8. Rate Limiting
 
 Implemented via [`slowapi`](https://github.com/laurentS/slowapi) (starlette-compatible `limits` wrapper):
 
@@ -349,7 +374,7 @@ The limiter is instantiated in `app/limiter.py` (a standalone module) to avoid c
 
 ---
 
-## 8. Security & Secret Management
+## 9. Security & Secret Management
 
 * **`.env` is git-ignored** — `backend/.gitignore` explicitly excludes `.env` and `*.env` while allowing `.env.example`.
 * **`.env.example`** contains only placeholder empty values — no real keys are ever committed.
@@ -358,7 +383,7 @@ The limiter is instantiated in `app/limiter.py` (a standalone module) to avoid c
 
 ---
 
-## 9. Observability & Health
+## 10. Observability & Health
 
 ### Structured Logging
 
@@ -388,7 +413,7 @@ GET /api/health
 
 ---
 
-## 10. Sample Drawings & Testing
+## 11. Sample Drawings & Testing
 
 Sample isometric drawings are included in `backend/sample_drawings/`:
 
@@ -401,7 +426,7 @@ Upload either file to test the full pipeline. If no API key is configured, the m
 
 ---
 
-## 11. Assumptions, Limitations & Accuracy Strategy
+## 12. Assumptions, Limitations & Accuracy Strategy
 
 ### What the pipeline gets right
 
@@ -426,7 +451,7 @@ Upload either file to test the full pipeline. If no API key is configured, the m
 
 ---
 
-## 12. What We Would Improve With More Time
+## 13. What We Would Improve With More Time
 
 | Priority | Improvement | Rationale |
 | :--- | :--- | :--- |
@@ -441,7 +466,7 @@ Upload either file to test the full pipeline. If no API key is configured, the m
 
 ---
 
-## 13. Backend Engineering Notes
+## 14. Backend Engineering Notes
 
 ### Circular Import Resolution
 
@@ -474,7 +499,7 @@ COMPLETED FAILED
 
 ---
 
-## 14. API Reference — MTO JSON Schema
+## 15. API Reference — MTO JSON Schema
 
 ```jsonc
 {
@@ -525,7 +550,7 @@ COMPLETED FAILED
 
 ---
 
-## 15. Running Tests
+## 16. Running Tests
 
 ```bash
 cd backend

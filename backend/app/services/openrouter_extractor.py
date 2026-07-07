@@ -118,9 +118,18 @@ class OpenRouterExtractor(VisionExtractor):
                 # Try to parse the JSON string from the response
                 try:
                     content_str = content.strip()
-                    match = re.search(r'```(?:json)?\s*(.*?)\s*```', content_str, re.DOTALL | re.IGNORECASE)
-                    if match:
-                        content_str = match.group(1).strip()
+                    start_idx = -1
+                    for fence in ["```json", "```JSON", "```"]:
+                        idx = content_str.find(fence)
+                        if idx != -1:
+                            start_idx = idx
+                            content_str = content_str[idx + len(fence):].strip()
+                            break
+                    if start_idx != -1:
+                        end_idx = content_str.find("```")
+                        if end_idx != -1:
+                            content_str = content_str[:end_idx].strip()
+                    
                     parsed_data = json.loads(content_str)
                 except json.JSONDecodeError as e:
                     raise ExtractionError(f"Failed to parse OpenRouter response as JSON: {str(e)}")

@@ -117,7 +117,8 @@ async def _run_extraction(
             log.info(f"Primary extractor ({extractor.source}) completed in {time.time() - t1:.2f} seconds")
         except (asyncio.TimeoutError, ExtractionError, Exception) as e:
             log.warning(
-                f"Primary extractor ({extractor.source}) failed or timed out (falling back to mock) after {time.time() - t1:.2f} seconds: {e}"
+                f"Primary extractor ({extractor.source}) failed or timed out (falling back to mock) after {time.time() - t1:.2f} seconds: {e}",
+                exc_info=True
             )
             from app.services.mock_extractor import MockExtractor
             extractor = MockExtractor()
