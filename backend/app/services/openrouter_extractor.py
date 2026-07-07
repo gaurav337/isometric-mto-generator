@@ -1,0 +1,146 @@
+import json
+import logging
+import httpx
+import time
+from typing import Any
+from app.config import Settings
+from app.services.extractor import VisionExtractor, ExtractionError
+
+logger = logging.getLogger(__name__)
+
+class OpenRouterExtractor(VisionExtractor):
+    """
+    Vision extractor backed by OpenRouter's OpenAI-compatible API.
+
+    Contract:
+        `image_b64` is ALWAYS a data-URL ("data:image/jpeg;base64,...") produced
+        by `preprocessor.preprocess_to_base64`. Never pass a raw base64 string.
+    """
+
+    def __init__(self, settings: Settings):
+        self.api_key = settings.openrouter_api_key
+        self.model = settings.openrouter_model
+        self.invoke_url = "https://openrouter.ai/api/v1/chat/completions"
+        logger.info(f"OpenRouterExtractor initialized with model: {self.model}")
+
+    @property
+    def source(self) -> str:
+        return "openrouter"
+
+    def extract(self, image_b64: str) -> dict[str, Any]:
+        prompt = (
+            "You are a piping engineering AI assistant. Analyze the uploaded piping isometric drawing (drawing image) "
+            "and extract a structured Material Take-Off (MTO). "
+            "Your output must be a single JSON object containing 'drawing_meta' and 'items'.\n\n"
+            "CRITICAL RULES:\n"
+            "1. Categories MUST be one of: ['PIPE', 'FITTING', 'FLANGE', 'VALVE', 'SUPPORT', 'WELD'].\n"
+            "2. DO NOT extract GASKET or BOLT rows — these are programmatically derived later. Ignore them.\n"
+            "3. For PIPE items, extract 'quantity' as the total length of the pipe run. Keep 'length_m' null or omit it.\n"
+            "4. NPS Sizes must include double quotes (e.g. \"6\\\"\" or \"6\\\"x4\\\"\").\n"
+            "5. Material specs should use ASME/ASTM vocabulary (e.g., 'ASTM A106 Gr.B', 'ASTM A234 WPB', 'ASTM A105', etc.).\n"
+            "6. Read the title block for 'drawing_meta': drawing_no, revision, line_number, nps, material_class, service, design_pressure, design_temperature.\n"
+            "7. Return ONLY valid JSON matching this schema:\n"
+            "{\n"
+            "  \"drawing_meta\": {\n"
+            "    \"drawing_no\": \"string\",\n"
+            "    \"revision\": \"string\",\n"
+            "    \"line_number\": \"string\",\n"
+            "    \"nps\": \"string\",\n"
+            "    \"material_class\": \"string\",\n"
+            "    \"service\": \"string\",\n"
+            "    \"design_pressure\": \"string or null\",\n"
+            "    \"design_temperature\": \"string or null\"\n"
+            "  },\n"
+            "  \"items\": [\n"
+            "    {\n"
+            "      \"item_no\": 1,\n"
+            "      \"category\": \"PIPE | FITTING | FLANGE | VALVE | SUPPORT | WELD\",\n"
+            "      \"description\": \"ASME specification description (e.g., '90 Deg LR Elbow, BW, ASME B16.9')\",\n"
+            "      \"size_nps\": \"string\",\n"
+            "      \"schedule_rating\": \"string or null (e.g., 'SCH 40', 'CL150')\",\n"
+            "      \"material_spec\": \"string or null (e.g., 'ASTM A234 WPB')\",\n"
+            "      \"end_type\": \"BW | SW | THD | FLGD | null\",\n"
+            "      \"quantity\": 12.45,\n"
+            "      \"confidence\": 0.9,\n"
+            "      \"remarks\": \"string\"\n"
+            "    }\n"
+            "  ]\n"
+            "}"
+        )
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "HTTP-Referer": "http://localhost:3000",
+            "X-Title": "AutoMTO",
+            "Content-Type": "application/json"
+        }
+
+        # image_b64 is always a data-URL from preprocessor — passed through as-is.
+
+        payload = {
+            "model": self.model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": image_b64
+                            }
+                        }
+                    ]
+                }
+            ],
+            "response_format": {"type": "json_object"}
+        }
+
+        attempts = 3
+        for attempt in range(attempts):
+            try:
+                logger.info(f"OpenRouter API request attempt {attempt + 1}/{attempts}")
+                with httpx.Client(timeout=90.0) as client:
+                    response = client.post(self.invoke_url, headers=headers, json=payload)
+                
+                response.raise_for_status()
+                result = response.json()
+                
+                if "choices" not in result or len(result["choices"]) == 0:
+                    raise ExtractionError("OpenRouter returned invalid API structure.")
+                    
+                content = result["choices"][0]["message"]["content"]
+                
+                # Try to parse the JSON string from the response
+                try:
+                    content = content.strip()
+                    if content.startswith("```json"):
+                        content = content[7:-3]
+                    elif content.startswith("```"):
+                        content = content[3:-3]
+                        
+                    parsed_data = json.loads(content)
+                except json.JSONDecodeError as e:
+                    raise ExtractionError(f"Failed to parse OpenRouter response as JSON: {str(e)}")
+                
+                # Validate the basic structure exists
+                if "drawing_meta" not in parsed_data or "items" not in parsed_data:
+                    raise ValueError("JSON response missing required keys 'drawing_meta' or 'items'")
+                    
+                return parsed_data
+                
+            except ExtractionError:
+                # Already a terminal failure — don't retry
+                raise
+            except Exception as e:
+                logger.warning(f"Attempt {attempt + 1} failed: {str(e)}")
+                if attempt < attempts - 1:
+                    sleep_time = 2 ** attempt
+                    logger.info(f"Retrying OpenRouter in {sleep_time} seconds...")
+                    time.sleep(sleep_time)
+                else:
+                    logger.error(f"OpenRouter extraction failed after {attempts} attempts: {str(e)}")
+                    raise ExtractionError(f"OpenRouter extraction failed after {attempts} attempts: {str(e)}") from e

@@ -1,0 +1,202 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+/* Tabular Search & Filtering Controls */
+.filterContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .filterContainer {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.searchInputWrapper {
+  position: relative;
+  flex: 1;
+  max-width: 320px;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 0.55rem 1rem 0.55rem 2.25rem;
+  background: rgba(255, 255, 255, 0.7);
+  border: var(--border-subtle);
+  border-radius: 8px;
+  color: var(--color-secondary-900);
+  font-size: 0.85rem;
+  transition: all var(--transition-fast);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: var(--shadow-glow);
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-secondary-500);
+  pointer-events: none;
+}
+
+.categoryBar {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.filterChip {
+  background: rgba(15, 23, 42, 0.03);
+  border: var(--border-subtle);
+  color: var(--color-secondary-500);
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.filterChip:hover {
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--color-secondary-900);
+}
+
+.filterChipActive {
+  background: var(--color-primary-500);
+  color: white;
+  border-color: var(--color-primary-600);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+}
+
+/* Material Table Styling */
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.table th, .table td {
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+  white-space: nowrap;
+}
+
+.table th {
+  background: rgba(15, 23, 42, 0.02);
+  font-weight: 700;
+  color: var(--color-secondary-500);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+}
+
+.table tbody tr {
+  transition: background-color var(--transition-fast);
+}
+
+.table tbody tr:hover {
+  background-color: rgba(15, 23, 42, 0.01);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Category Badge Indicators */
+.badge {
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: inline-block;
+  letter-spacing: 0.02em;
+}
+
+.desc {
+  white-space: normal;
+  min-width: 240px;
+  max-width: 400px;
+  line-height: 1.4;
+  color: var(--color-secondary-900);
+}
+
+.number {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-family: var(--font-family-secondary);
+}
+
+.remarks {
+  color: var(--color-secondary-500);
+  font-size: 0.8rem;
+  white-space: normal;
+  max-width: 180px;
+}
+
+/* Confidence rating badges styling */
+.confidenceBadge {
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.confHigh {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border: 1px solid rgba(5, 150, 105, 0.15);
+}
+
+.confMed {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  border: 1px solid rgba(217, 119, 6, 0.15);
+}
+
+.confLow {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  animation: pulse 2s infinite;
+}
+
+.empty {
+  padding: 4rem 2rem;
+  text-align: center;
+  color: var(--color-secondary-500);
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: var(--radius-md);
+  border: 1px dashed rgba(15, 23, 42, 0.1);
+  font-size: 0.9rem;
+}

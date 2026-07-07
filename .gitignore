@@ -1,0 +1,38 @@
+# Dependency & build directories
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Python virtual environment and cache
+backend/.venv/
+backend/venv/
+backend/env/
+backend/__pycache__/
+backend/*.py[cod]
+
+# Secrets (never commit these)
+backend/.env
+backend/*.env
+!backend/.env.example
+frontend/.env*
+
+# Database files
+backend/jobs.db
+backend/jobs.db-shm
+backend/jobs.db-wal
+
+# Testing cache
+backend/.pytest_cache/
+
+# Large archives and packages
+*.zip
+
+# OS and Editor configs
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*.log
