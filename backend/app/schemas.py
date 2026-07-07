@@ -46,6 +46,7 @@ class MTOItem(BaseModel):
     quantity: float = Field(..., description="Quantity count or pipe length")
     unit: ItemUnit = Field(..., description="Unit of measurement")
     length_m: float | None = Field(None, description="Total cut length (PIPE category only)")
+    segment_lengths: list[float] | None = Field(None, description="List of individual pipe segment lengths (PIPE category only)")
     confidence: float | None = Field(None, ge=0.0, le=1.0, description="Confidence score")
     remarks: str = Field("", description="Remarks or special notes")
 

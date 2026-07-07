@@ -7,7 +7,7 @@ class ExtractionError(Exception):
 
 class VisionExtractor(ABC):
     @abstractmethod
-    def extract(self, image_b64: str) -> dict[str, Any]:
+    def extract(self, image_b64: str, ocr_context: str = "") -> dict[str, Any]:
         """
         Sends the base64-encoded image to the vision model and returns the parsed JSON dict
         matching the LLMOutputSchema structure.
@@ -34,14 +34,14 @@ class ChainExtractor(VisionExtractor):
             return self._active_extractor.source
         return "chain"
 
-    def extract(self, image_b64: str) -> dict[str, Any]:
+    def extract(self, image_b64: str, ocr_context: str = "") -> dict[str, Any]:
         last_error = None
         for extractor in self.extractors:
             import logging
             logger = logging.getLogger(__name__)
             logger.info(f"Attempting extraction using provider: {extractor.source}")
             try:
-                result = extractor.extract(image_b64)
+                result = extractor.extract(image_b64, ocr_context)
                 self._active_extractor = extractor
                 return result
             except Exception as e:

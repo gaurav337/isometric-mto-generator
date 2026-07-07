@@ -99,7 +99,7 @@ async def _run_extraction(
         # --- CPU-bound: PDF render / PIL resize — thread pool ---
         t0 = time.time()
         try:
-            image_b64: str = await asyncio.to_thread(
+            image_b64, ocr_context = await asyncio.to_thread(
                 preprocess_to_base64, content, filename
             )
             log.info(f"Preprocessing completed in {time.time() - t0:.2f} seconds")
@@ -109,10 +109,10 @@ async def _run_extraction(
         # --- IO-bound: LLM API call — thread pool ---
         t1 = time.time()
         try:
-            # 60-second hard ceiling for primary LLM extraction call
+            # 600-second hard ceiling for primary LLM extraction call (allows for multiple extractors in a chain to try and retry)
             raw_payload = await asyncio.wait_for(
-                asyncio.to_thread(extractor.extract, image_b64),
-                timeout=60.0,
+                asyncio.to_thread(extractor.extract, image_b64, ocr_context),
+                timeout=600.0,
             )
             log.info(f"Primary extractor ({extractor.source}) completed in {time.time() - t1:.2f} seconds")
         except (asyncio.TimeoutError, ExtractionError, Exception) as e:
@@ -123,7 +123,7 @@ async def _run_extraction(
             from app.services.mock_extractor import MockExtractor
             extractor = MockExtractor()
             t2 = time.time()
-            raw_payload = await asyncio.to_thread(extractor.extract, image_b64)
+            raw_payload = await asyncio.to_thread(extractor.extract, image_b64, ocr_context)
             log.info(f"Fallback mock extractor completed in {time.time() - t2:.2f} seconds")
 
         # --- Validate + derive ---

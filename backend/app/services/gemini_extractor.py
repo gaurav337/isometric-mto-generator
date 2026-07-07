@@ -14,14 +14,17 @@ class GeminiExtractor(VisionExtractor):
     def __init__(self, settings: Settings):
         self.api_key = settings.gemini_api_key
         self.model_name = settings.gemini_model
-        self.client = genai.Client(api_key=self.api_key)
+        self.client = genai.Client(
+            api_key=self.api_key,
+            http_options={"timeout": 90000}
+        )
         logger.info(f"GeminiExtractor initialized with model: {self.model_name}")
 
     @property
     def source(self) -> str:
         return "gemini"
 
-    def extract(self, image_b64: str) -> dict[str, Any]:
+    def extract(self, image_b64: str, ocr_context: str = "") -> dict[str, Any]:
         # Decode the image_b64 to raw bytes and parse the mime type
         try:
             if "," in image_b64:
@@ -42,11 +45,12 @@ class GeminiExtractor(VisionExtractor):
             "CRITICAL RULES:\n"
             "1. Categories MUST be one of: ['PIPE', 'FITTING', 'FLANGE', 'VALVE', 'SUPPORT', 'WELD'].\n"
             "2. DO NOT extract GASKET or BOLT rows — these are programmatically derived later. Ignore them.\n"
-            "3. For PIPE items, extract 'quantity' as the total length of the pipe run. Keep 'length_m' null or omit it.\n"
+            "3. For PIPE items, do NOT calculate total length. Instead, extract 'segment_lengths' as a list of numbers representing the individual pipe segment dimensions shown on the drawing (e.g. [1178, 1476]). Keep 'quantity' as 0.\n"
             "4. NPS Sizes must include double quotes (e.g. \"6\\\"\" or \"6\\\"x4\\\"\").\n"
             "5. Material specs should use ASME/ASTM vocabulary (e.g., 'ASTM A106 Gr.B', 'ASTM A234 WPB', 'ASTM A105', etc.).\n"
             "6. Read the title block for 'drawing_meta': drawing_no, revision, line_number, nps, material_class, service, design_pressure, design_temperature.\n"
-            "7. Return ONLY valid JSON matching this schema:\n"
+            "7. If a value is not explicitly written on the drawing, return `null` or `Unknown`. DO NOT guess or infer material specs, pressures, or drawing numbers.\n"
+            "8. Return ONLY valid JSON matching this schema:\n"
             "{\n"
             "  \"drawing_meta\": {\n"
             "    \"drawing_no\": \"string\",\n"
@@ -68,12 +72,18 @@ class GeminiExtractor(VisionExtractor):
             "      \"material_spec\": \"string or null (e.g., 'ASTM A234 WPB')\",\n"
             "      \"end_type\": \"BW | SW | THD | FLGD | null\",\n"
             "      \"quantity\": 12.45,\n"
+            "      \"segment_lengths\": [1178, 1476],\n"
             "      \"confidence\": 0.9,\n"
             "      \"remarks\": \"string\"\n"
             "    }\n"
             "  ]\n"
-            "}"
+            "}\n\n"
+            "FEW-SHOT EXAMPLE (MISSING BOM):\n"
+            "If the drawing lacks a Bill of Materials table entirely, rely strictly on text written on the page. Do not hallucinate specs. Return `null` for material_spec and schedule_rating. For drawing metadata, if it is not printed, return `Unknown`."
         )
+
+        if ocr_context:
+            prompt += f"\n\n{ocr_context}"
 
         # Prepare Gemini content parts
         contents = [
@@ -93,19 +103,32 @@ class GeminiExtractor(VisionExtractor):
         attempts = 3
         for attempt in range(attempts):
             try:
-                logger.info(f"Gemini API request attempt {attempt + 1}/{attempts}")
+                logger.info(f"Gemini API request attempt {attempt + 1}/{attempts} (model: {self.model_name})")
+                start_time = time.time()
                 response = self.client.models.generate_content(
                     model=self.model_name,
                     contents=contents,
                     config=generation_config
                 )
+                elapsed = time.time() - start_time
+                logger.info(f"Gemini response received in {elapsed:.2f}s")
                 
                 content = response.text
                 if not content:
                     raise ExtractionError("Gemini returned an empty response.")
                 
+                # Clean up potential markdown formatting
+                cleaned = content.strip()
+                if cleaned.startswith("```json"):
+                    cleaned = cleaned[7:]
+                elif cleaned.startswith("```"):
+                    cleaned = cleaned[3:]
+                if cleaned.endswith("```"):
+                    cleaned = cleaned[:-3]
+                cleaned = cleaned.strip()
+                
                 # Parse output as JSON
-                parsed_data = json.loads(content)
+                parsed_data = json.loads(cleaned)
                 
                 # Check top-level keys
                 if "drawing_meta" not in parsed_data or "items" not in parsed_data:

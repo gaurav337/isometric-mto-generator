@@ -13,6 +13,22 @@ from app.schemas import (
 
 logger = logging.getLogger(__name__)
 
+def normalize_nps_size(size: Any, default: str = "") -> str:
+    """Normalizes NPS size to ensure it contains double quotes and standardizes separators."""
+    if size is None:
+        return default
+    val = str(size).strip()
+    if not val:
+        return default
+    # Standardize X/x to lowercase x
+    val = val.replace("X", "x")
+    # If no double quote, append it
+    if '"' not in val:
+        # E.g., if "6" or "6x4", convert to "6\"" or "6\"x4\""
+        val = val.replace("x", "\"x") + "\""
+        val = val.replace("\"\"", "\"")  # guard against double quotes
+    return val
+
 def validate_and_derive(raw_data: dict[str, Any], job_id: str) -> MTOResponse:
     """
     Validates the raw LLM output, normalizes units and sizes,
@@ -29,7 +45,7 @@ def validate_and_derive(raw_data: dict[str, Any], job_id: str) -> MTOResponse:
             drawing_no=str(raw_meta.get("drawing_no") or "UNKNOWN-DWG"),
             revision=str(raw_meta.get("revision") or "0"),
             line_number=str(raw_meta.get("line_number") or "UNKNOWN-LINE"),
-            nps=str(raw_meta.get("nps") or 'UNKNOWN-NPS"'),
+            nps=normalize_nps_size(raw_meta.get("nps"), 'UNKNOWN-NPS"'),
             material_class=str(raw_meta.get("material_class") or "UNKNOWN-CLASS"),
             service=str(raw_meta.get("service") or "UNKNOWN-SERVICE"),
             design_pressure=raw_meta.get("design_pressure"),
@@ -120,37 +136,49 @@ def validate_and_derive(raw_data: dict[str, Any], job_id: str) -> MTOResponse:
             else:
                 unit = ItemUnit.EA
 
-            # Handle length_m
+            # Handle segment_lengths and length_m for PIPE
             length_m = None
+            segment_lengths = raw_item.get("segment_lengths")
+            
             if category == ItemCategory.PIPE:
-                # If length_m is not set but quantity is set, assign quantity to length_m
-                length_m = raw_item.get("length_m")
-                try:
-                    if length_m is not None:
-                        length_m = float(length_m)
-                    else:
-                        length_m = quantity
-                except (ValueError, TypeError):
-                    length_m = quantity
+                if isinstance(segment_lengths, list) and len(segment_lengths) > 0:
+                    valid_segments = []
+                    for s in segment_lengths:
+                        try:
+                            valid_segments.append(float(s))
+                        except (ValueError, TypeError):
+                            pass
+                    
+                    if valid_segments:
+                        total = sum(valid_segments)
+                        # Isometric dimensions > 100 are typically mm. Convert to meters.
+                        if total > 100:
+                            total = total / 1000.0
+                        quantity = total
+                        length_m = total
                 
-                # Check for positive length
-                if length_m <= 0:
-                    length_m = 1.0  # default minimum fallback
-                    quantity = 1.0
+                # Fallback to legacy length_m / quantity if segment_lengths didn't resolve
+                if length_m is None:
+                    length_m = raw_item.get("length_m")
+                    try:
+                        if length_m is not None:
+                            length_m = float(length_m)
+                        else:
+                            length_m = float(quantity)
+                    except (ValueError, TypeError):
+                        length_m = float(quantity)
+                    
+                    # Check for positive length
+                    if length_m <= 0:
+                        length_m = 1.0  # default minimum fallback
+                        quantity = 1.0
             
             # Normalize NPS size
-            size_nps = str(raw_item.get("size_nps") or "").strip()
-            # Standardize X/x to lowercase x
-            size_nps = size_nps.replace("X", "x")
-            # If no double quote, append it
-            if size_nps and '"' not in size_nps:
-                # E.g., if "6" or "6x4", convert to "6\"" or "6\"x4\""
-                size_nps = size_nps.replace("x", "\"x") + "\""
-                size_nps = size_nps.replace("\"\"", "\"")  # guard against double quotes
+            size_nps = normalize_nps_size(raw_item.get("size_nps"))
             
             # If it's still empty, use nominal size from drawing metadata
             if not size_nps or size_nps == "\"":
-                size_nps = drawing_meta.nps if drawing_meta.nps else "6\""
+                size_nps = normalize_nps_size(drawing_meta.nps, "6\"")
 
             # Parse confidence
             try:
@@ -169,6 +197,7 @@ def validate_and_derive(raw_data: dict[str, Any], job_id: str) -> MTOResponse:
                 quantity=quantity,
                 unit=unit,
                 length_m=length_m,
+                segment_lengths=segment_lengths if isinstance(segment_lengths, list) else None,
                 confidence=confidence,
                 remarks=str(raw_item.get("remarks") or "")
             )

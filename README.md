@@ -413,16 +413,30 @@ GET /api/health
 
 ---
 
-## 11. Sample Drawings & Testing
+## 11. Sample Drawings & Test Assets
 
-Sample isometric drawings are included in `backend/sample_drawings/`:
+The repository contains two sets of drawing assets used for manual testing and visual regression checks:
 
-| File | Description |
-| :--- | :--- |
-| `sample_iso.png` | Standard 6" carbon steel process line isometric |
-| `3. Marked isometric (1).pdf` | Annotated multi-component isometric PDF |
+### Backend Sample Drawings (`backend/sample_drawings/`)
+These are used for manually testing the end-to-end web application by uploading blueprints directly via the browser:
+* **`sample_iso.png`**: A standard 6" carbon steel process line isometric drawing.
+* **`3. Marked isometric (1).pdf`**: An annotated, multi-component isometric PDF file.
 
-Upload either file to test the full pipeline. If no API key is configured, the mock pipeline returns a realistic pre-baked MTO labelled `[MOCK DATA]` so evaluators can validate the entire UI flow without credentials.
+### Regression & Visual Test Assets (`assets/tests/`)
+These are dedicated testing assets used to validate extraction accuracy and frontend dashboard rendering:
+* **`test1.png`**: An input sample isometric drawing sheet containing standard piping components (elbows, valves, flanges).
+* **`test1_result.jpeg`**: Expected final visual output in the web UI. Shows the correct side-by-side view, bounding highlights, and derived MTO table.
+* **`test2.png`**: A second, distinct isometric blueprint sheet with different annotations and title block structure.
+* **`test2_result.jpeg`**: The corresponding expected visual results screen for `test2.png` inside the Next.js frontend workspace dashboard.
+
+### CLI Testing Tool (`backend/test_images.py`)
+To test the vision AI extraction pipeline directly from the command line without launching the web server, you can run the `test_images.py` script:
+```bash
+cd backend
+source .venv/bin/activate
+python test_images.py
+```
+This script runs the active extractor (e.g. Llama NIM or Gemini API) against `assets/tests/test1.png` and `assets/tests/test2.png`, outputs the raw logs, validates the result through `validator.py`, and prints the parsed MTO metadata and item count directly to the console.
 
 ---
 
@@ -437,6 +451,7 @@ Upload either file to test the full pipeline. If no API key is configured, the m
 
 ### Where it fails
 
+* **Missing BOMs**: For drawings without explicit BOM tables, the pipeline relies on symbol counting, which is inherently lower-confidence without a trained custom detection model. The AI may miss symbols or misinterpret intersecting lines as fittings.
 * **Dense or hand-drawn drawings**: Very crowded isometrics with overlapping labels and non-standard symbol styles reduce detection accuracy significantly.
 * **Rotated or small text**: Labels smaller than ~6pt or rotated > 30° are often missed or misread by general-purpose vision LLMs.
 * **Multi-sheet PDFs**: Only page 1 is processed. Multi-sheet spools are not combined.
@@ -558,4 +573,11 @@ source .venv/bin/activate
 pytest tests/ -v
 ```
 
-Tests cover schema validation (Pydantic models), mock extractor output, and the `/api/upload` + `/api/mto/{id}` happy path using the mock pipeline (no API key required).
+The backend contains several meaningful tests to ensure the integrity of the extraction logic:
+- **Schema validation**: Verifies that the Pydantic models correctly catch missing fields, enforce allowed categories, and accurately compute gasket/bolt derivations.
+- **Endpoint happy-path with the mock pipeline**: Tests the full `POST /api/upload` and `GET /api/mto/{job_id}` cycle without requiring an actual LLM API key, ensuring graceful degradation works.
+- **Unit normalization checks**: Ensures that the `validator.py` correctly maps `PIPE` to metres and `FITTING` to counts.
+
+Full coverage is not expected for this assessment, but these critical paths are strictly tested.
+
+> **Note:** Ensure you are running `pytest` from within the activated virtual environment (`source .venv/bin/activate`) so that the internal `app` module resolves correctly.

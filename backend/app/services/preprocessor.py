@@ -13,7 +13,8 @@ def preprocess_to_base64(file_bytes: bytes, original_filename: str = "") -> str:
     - PDF: Renders first page at 150 DPI.
     - Image: Normalizes format, scales if size > 2048px.
     - Converts to RGB.
-    - Returns base64 encoded JPEG data URL string.
+    - Extracts OCR context string (lists bounding boxes text).
+    - Returns a tuple: (base64 encoded JPEG data URL string, ocr_context_string)
     """
     if not file_bytes:
         raise PreprocessingError("File content is empty.")
@@ -74,6 +75,30 @@ def preprocess_to_base64(file_bytes: bytes, original_filename: str = "") -> str:
         
         # Encode to base64
         base64_str = base64.b64encode(jpeg_bytes).decode("utf-8")
-        return f"data:image/jpeg;base64,{base64_str}"
+        b64_url = f"data:image/jpeg;base64,{base64_str}"
+        
+        # Extract OCR context
+        ocr_context = ""
+        try:
+            import easyocr
+            import numpy as np
+            import logging
+            
+            reader = easyocr.Reader(['en'], gpu=False, verbose=False)
+            img_np = np.array(img)
+            results = reader.readtext(img_np)
+            
+            extracted_texts = []
+            for bbox, text, conf in results:
+                if conf > 0.5:
+                    extracted_texts.append(text)
+                    
+            if extracted_texts:
+                ocr_context = "DETECTED TEXT (OCR):\n- " + "\n- ".join(extracted_texts)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"OCR Extraction failed: {e}")
+            
+        return b64_url, ocr_context
     except Exception as e:
         raise PreprocessingError(f"Failed to process image: {str(e)}")

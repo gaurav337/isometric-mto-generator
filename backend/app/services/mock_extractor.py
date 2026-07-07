@@ -6,7 +6,7 @@ class MockExtractor(VisionExtractor):
     def source(self) -> str:
         return "mock"
 
-    def extract(self, image_b64: str) -> dict[str, Any]:
+    def extract(self, image_b64: str, ocr_context: str = "") -> dict[str, Any]:
         """
         Returns a raw dictionary representing raw LLM output,
         containing DrawingMetadata fields and items list (excluding derived gaskets/bolts).

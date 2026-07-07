@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.5-flash"
     
     openrouter_api_key: str | None = None
-    openrouter_model: str = "nvidia/nemotron-nano-12b-v2-vl:free"
+    openrouter_model: str = "meta-llama/llama-3.2-90b-vision-instruct"
     
     host: str = "0.0.0.0"
     port: int = 8000
